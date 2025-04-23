@@ -1,0 +1,81 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Role Model
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  users       UserRole[]
+}
+
+// User Model
+model User {
+  id          Int      @id @default(autoincrement())
+  email       String   @unique
+  password    String
+  firstName   String
+  lastName    String
+  tasks       Task[]   // User can create tasks
+  teams       Team[]   @relation("TeamMembers")
+  roles       UserRole[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Intermediate Model to Manage User Roles
+model UserRole {
+  id      Int    @id @default(autoincrement())
+  userId  Int
+  roleId  Int
+  teamId  Int
+
+  user    User  @relation(fields: [userId], references: [id])
+  role    Role  @relation(fields: [roleId], references: [id])
+  team    Team  @relation(fields: [teamId], references: [id])
+
+  @@unique([userId, teamId, roleId])
+}
+
+// Team Model
+model Team {
+  id        Int    @id @default(autoincrement())
+  name      String
+  tasks     Task[] // Tasks belonging to a team
+  members   User[] @relation("TeamMembers")
+  roles     UserRole[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Task Model
+model Task {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  status      TaskStatus @default(PENDING)
+  creatorId   Int
+  teamId      Int
+  labels      String[]
+  markdown    String?   // Markdown-based descriptions for task
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  creator     User @relation(fields: [creatorId], references: [id])
+  team        Team @relation(fields: [teamId], references: [id])
+}
+
+// Enum for Task Status
+enum TaskStatus {
+  PENDING
+  COMPLETED
+  APPROVED
+  REJECTED
+}

@@ -1,6 +1,6 @@
-# Turborepo starter
+# TManage
 
-This Turborepo starter is maintained by the Turborepo core team.
+A scalable team and task management platform supporting role based access control for different levels of users.
 
 ## Using this example
 
@@ -16,9 +16,9 @@ This Turborepo includes the following packages/apps:
 
 ### Apps and Packages
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
+- `frontend`: a [Next.js](https://nextjs.org/) app
+- `backend`: a [Node.js](https://nodejs.org/en/) app
+- `@repo/ui`: a stub React component library shared by both `frontend` and `backend` applications
 - `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
 - `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
 

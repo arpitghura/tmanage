@@ -1,0 +1,389 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Existing models
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String
+  first_name String
+  last_name  String
+  role       String   @default("user") // USER, ADMIN
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  is_invited           Boolean @default(false)
+  is_accept_invitation Boolean @default(false)
+  invitation_token     String?
+  is_not_allowed       Boolean @default(false)
+  is_su_user           Boolean @default(false)
+
+  // Relations
+  teams                  TeamMember[]
+  tasks                  Task[]                   @relation("UserTasks")
+  createdTasks           Task[]                   @relation("CreatedTasks")
+  sessions               Session[]
+  loginLogs              LoginLog[]
+  comments               Comment[]
+  TaskApproval           TaskApproval[]
+  AuditLog               AuditLog[]
+  organizations          OrganizationMember[]
+  createdOrgs            Organization[]           @relation("CreatedOrganizations")
+  OrganizationInvitation OrganizationInvitation[]
+
+  @@unique([id, email])
+  @@index([email])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  isLoggedIn   Boolean  @default(false)
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  @@index([sessionToken])
+}
+
+model LoginLog {
+  id           String    @id @default(uuid())
+  sessionToken String    @unique
+  loginTime    DateTime  @default(now())
+  logoutTime   DateTime?
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+}
+
+model Team {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  members        TeamMember[]
+  tasks          Task[]
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+
+  @@unique([name, organizationId])
+  OrganizationInvitation OrganizationInvitation[]
+}
+
+model TeamMember {
+  id       String   @id @default(uuid())
+  role     String // 'LEAD', 'MODERATOR', 'MEMBER'
+  joinedAt DateTime @default(now())
+
+  // Relations
+  team   Team   @relation(fields: [teamId], references: [id])
+  teamId String
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+
+
+  @@unique([teamId, userId])
+  // @@unique([teamId, organizationId, userId])
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  assignedTo   User?          @relation("UserTasks", fields: [assignedToId], references: [id])
+  assignedToId String?
+  team         Team?          @relation(fields: [teamId], references: [id])
+  teamId       String?
+  createdBy    User           @relation("CreatedTasks", fields: [createdById], references: [id])
+  createdById  String
+  labels       TaskLabel[]
+  comments     Comment[]
+  TaskApproval TaskApproval[]
+
+  @@index([status])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  // Relations
+  task   Task   @relation(fields: [taskId], references: [id])
+  taskId String
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+}
+
+model TaskApproval {
+  id           String  @id @default(uuid())
+  taskId       String
+  task         Task    @relation(fields: [taskId], references: [id])
+  approvedById String
+  approvedBy   User    @relation(fields: [approvedById], references: [id])
+  approved     Boolean
+
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String
+  entityType String
+  entityId   String?
+  createdAt  DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+}
+
+model Label {
+  id    String      @id @default(uuid())
+  name  String      @unique
+  tasks TaskLabel[]
+}
+
+model TaskLabel {
+  id    String @id @default(uuid())
+  label String
+
+  // Relations
+  task    Task    @relation(fields: [taskId], references: [id])
+  taskId  String
+  Label   Label?  @relation(fields: [labelId], references: [id])
+  labelId String?
+
+  @@unique([taskId, label])
+}
+
+// New models
+
+model Organization {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  members                OrganizationMember[]
+  teams                  Team[]
+  TeamMember             TeamMember[]
+  createdBy              User                     @relation("CreatedOrganizations", fields: [createdById], references: [id])
+  createdById            String
+  OrganizationInvitation OrganizationInvitation[]
+
+}
+
+model OrganizationMember {
+  id       String   @id @default(uuid())
+  role     String // 'ADMIN', 'MEMBER'
+  joinedAt DateTime @default(now())
+
+  // Relations
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  user           User         @relation(fields: [userId], references: [id])
+  userId         String       
+
+  @@unique([organizationId, userId])
+}
+
+model OrganizationInvitation {
+  id              String    @id @default(uuid())
+  role            String
+  invitationToken String    @unique
+  expiresAt       DateTime
+  createdAt       DateTime  @default(now())
+  acceptedAt      DateTime?
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  organizationId  String
+
+  user            User? @relation(fields: [email], references: [email])
+  email           String
+
+  team           Team? @relation(fields: [teamId], references: [id])
+  teamId         String?
+
+  @@unique([organizationId, email])
+  @@unique([organizationId, email, teamId])
+}
+
+// model User {
+//   id         String   @id @default(uuid())
+//   email      String   @unique
+//   password   String
+//   first_name String
+//   last_name  String
+//   role       String   @default("user") // USER, ADMIN, COLLABORATORS, TEAM LEAD
+//   createdAt  DateTime @default(now())
+//   updatedAt  DateTime @updatedAt
+
+//   Relations
+//   teams        TeamMember[]
+//   tasks        Task[]         @relation("UserTasks")
+//   createdTasks Task[]         @relation("CreatedTasks")
+//   sessions     Session[]
+//   loginLogs    LoginLog[]
+//   comments     Comment[]
+//   TaskApproval TaskApproval[]
+//   AuditLog     AuditLog[]
+
+//   @@index([email])
+// }
+
+// model Session {
+//   id           String   @id @default(uuid())
+//   sessionToken String   @unique
+//   expiresAt    DateTime
+//   createdAt    DateTime @default(now())
+//   isLoggedIn   Boolean  @default(false)
+
+//   Relations
+//   user   User   @relation(fields: [userId], references: [id])
+//   userId String
+
+//   @@index([sessionToken]) // Index for optimization
+// }
+
+// model LoginLog {
+//   id           String    @id @default(uuid())
+//   sessionToken String    @unique
+//   loginTime    DateTime  @default(now())
+//   logoutTime   DateTime?
+
+//   Relations
+//   user   User   @relation(fields: [userId], references: [id])
+//   userId String
+// }
+
+// model Team {
+//   id          String   @id @default(uuid())
+//   name        String
+//   description String?
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+
+//   Relations
+//   members TeamMember[]
+//   tasks   Task[]
+// }
+
+// model TeamMember {
+//   id       String   @id @default(uuid())
+//   role     String // 'Admin', 'Collaborator', 'Member'
+//   joinedAt DateTime @default(now())
+
+//   Relations
+//   team   Team   @relation(fields: [teamId], references: [id])
+//   teamId String
+//   user   User   @relation(fields: [userId], references: [id])
+//   userId String
+
+//   @@unique([teamId, userId])
+// }
+
+// model Task {
+//   id          String   @id @default(uuid())
+//   title       String
+//   description String?
+//   status      String   @default("pending")
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+
+//   Relations
+//   assignedTo   User?          @relation("UserTasks", fields: [assignedToId], references: [id])
+//   assignedToId String?       
+//   team         Team?          @relation(fields: [teamId], references: [id])
+//   teamId       String?
+//   createdBy    User           @relation("CreatedTasks", fields: [createdById], references: [id])
+//   createdById  String
+//   labels       TaskLabel[]
+//   comments     Comment[]
+//   TaskApproval TaskApproval[]
+
+//   @@index([status])
+// }
+
+// model Comment {
+//   id        String   @id @default(uuid())
+//   content   String
+//   createdAt DateTime @default(now())
+
+//   Relations
+//   task   Task   @relation(fields: [taskId], references: [id])
+//   taskId String
+//   user   User   @relation(fields: [userId], references: [id])
+//   userId String
+// }
+
+// model TaskApproval {
+//   id           String  @id @default(uuid())
+//   taskId       String
+//   task         Task    @relation(fields: [taskId], references: [id])
+//   approvedById String
+//   approvedBy   User    @relation(fields: [approvedById], references: [id])
+//   approved     Boolean
+
+//   createdAt DateTime @default(now())
+// }
+
+// model AuditLog {
+//   id         String   @id @default(uuid())
+//   action     String
+//   entityType String
+//   entityId   String? // Change to String? for consistency
+//   createdAt  DateTime @default(now())
+
+//   user   User?   @relation(fields: [userId], references: [id])
+//   userId String?
+// }
+
+// Many-to-many relationship between tasks and labels
+// model Label {
+//   id    String      @id @default(uuid())
+//   name  String      @unique
+//   tasks TaskLabel[]
+// }
+
+// model TaskLabel {
+//   id    String @id @default(uuid())
+//   label String
+
+//   Relations
+//   task    Task    @relation(fields: [taskId], references: [id])
+//   taskId  String
+//   Label   Label?  @relation(fields: [labelId], references: [id])
+//   labelId String?
+
+//   @@unique([taskId, label]) // Prevent duplicate labels for a task
+// }

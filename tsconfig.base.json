@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+      "strict": true,
+      "baseUrl": ".",
+      "paths": {
+        "@/*": ["apps/frontend/src/*"],
+        "@backend/*": ["apps/backend/src/*"],
+        "@shared/*": ["packages/shared/*"],
+        "@tmanage/prisma": ["packages/prisma"]
+      }
+    }
+  }
+  

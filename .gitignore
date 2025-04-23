@@ -41,6 +41,6 @@ yarn-error.log*
 .DS_Store
 *.pem
 
-# config 
-.config.ts
+# config
+*.config.ts
 config.ts
